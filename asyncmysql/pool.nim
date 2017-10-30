@@ -11,7 +11,7 @@ import asyncdispatch, asyncnet, net, mysqlparser, error, query, connection, stru
 type
   ConnectionFlag = enum
     connIdle
-  
+
   Config = object
     domain: Domain
     port: Port
@@ -30,7 +30,7 @@ type
 
   RequestCb = proc (conn: AsyncMysqlConnection): Future[void] {.closure, gcsafe.}
 
-proc acquire(p: AsyncMysqlPool): Future[int] = 
+proc acquire(p: AsyncMysqlPool): Future[int] =
   let retFuture = newFuture[int]("AsyncMysqlPool.acquire")
   result = retFuture
   var closedIx = -1
@@ -41,14 +41,14 @@ proc acquire(p: AsyncMysqlPool): Future[int] =
       else:
         excl(p.conns[i].flags, connIdle)
         complete(retFuture, i)
-        return 
+        return
   if closedIx >= 0:
     openMysqlConnection(
-      p.config.domain,   p.config.port,     
-      p.config.host,     p.config.user, 
-      p.config.password, p.config.database, 
+      p.config.domain,   p.config.port,
+      p.config.host,     p.config.user,
+      p.config.password, p.config.database,
       p.config.charset,  p.config.capabilities
-    ).callback = proc (fut: Future[AsyncMysqlConnection]) = 
+    ).callback = proc (fut: Future[AsyncMysqlConnection]) =
       if fut.failed:
         p.conns[closedIx].conn = nil
         fail(retFuture, fut.readError)
@@ -63,13 +63,13 @@ proc release(p: AsyncMysqlPool, connIx: int) =
   if p.connFutures.len > 0:
     let connFuture = popFirst(p.connFutures)
     callSoon() do ():
-      complete(connFuture, connIx)  
+      complete(connFuture, connIx)
   else:
     incl(p.conns[connIx].flags, connIdle)
 
 proc openMysqlPool*(
-  domain: Domain = AF_INET, 
-  port = Port(3306), 
+  domain: Domain = AF_INET,
+  port = Port(3306),
   host = "127.0.0.1",
   user: string,
   password: string,
@@ -77,7 +77,7 @@ proc openMysqlPool*(
   charset = DefaultClientCharset,
   capabilities = DefaultClientCapabilities,
   capacity = 10
-): Future[AsyncMysqlPool] {.async.} = 
+): Future[AsyncMysqlPool] {.async.} =
   new(result)
   result.conns = newSeqOfCap[tuple[conn: AsyncMysqlConnection, flags: set[ConnectionFlag]]](capacity)
   result.connFutures = initDeque[Future[int]](32)
@@ -109,25 +109,25 @@ proc close*(p: AsyncMysqlPool) =
 proc countAvailableConnections*(p: AsyncMysqlPool): int =
   result = 0
   for i in 0..<p.conns.len:
-    if connIdle in p.conns[i].flags and 
+    if connIdle in p.conns[i].flags and
        p.conns[i].conn != nil and
-       not p.conns[i].conn.closed: 
+       not p.conns[i].conn.closed:
       inc(result)
 
-proc request*(p: AsyncMysqlPool, cb: RequestCb) = 
-  proc task() {.async.} = 
+proc request*(p: AsyncMysqlPool, cb: RequestCb) =
+  proc task() {.async.} =
     let connIx = await acquire(p)
     let conn = p.conns[connIx].conn
     await cb(conn)
     release(p, connIx)
-  asyncCheck task()  
+  asyncCheck task()
 
 proc execQuery*(
   p: AsyncMysqlPool,
   q: SqlQuery,
   finishCb: proc (err: ref Exception): Future[void] {.closure, gcsafe.},
   recvPacketCb: proc (packet: ResultPacket): Future[void] {.closure, gcsafe.} = nil,
-  recvPacketEndCb: proc (): Future[void] {.closure, gcsafe.} = nil, 
+  recvPacketEndCb: proc (): Future[void] {.closure, gcsafe.} = nil,
   recvFieldCb: proc (field: string): Future[void] {.closure, gcsafe.} = nil
 ) =
   proc requestCb(conn: AsyncMysqlConnection): Future[void] =
@@ -145,7 +145,7 @@ proc execQuery*(
   p: AsyncMysqlPool,
   q: SqlQuery,
   bufferSize: int,
-  finishCb: proc (err: ref Exception): Future[void] {.closure, gcsafe.}, 
+  finishCb: proc (err: ref Exception): Future[void] {.closure, gcsafe.},
   recvPacketCb: proc (packet: ResultPacket): Future[void] {.closure, gcsafe.} = nil,
   recvPacketEndCb: proc (): Future[void] {.closure, gcsafe.} = nil,
   recvFieldCb: proc (buffer: string): Future[void] {.closure, gcsafe.} = nil,
@@ -164,9 +164,9 @@ proc execQuery*(
 
 proc execQuery*(
   p: AsyncMysqlPool,
-  q: SqlQuery, 
+  q: SqlQuery,
   finishCb: proc (
-    err: ref Exception, 
+    err: ref Exception,
     replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
   ): Future[void] {.closure, gcsafe.}
 ) =
@@ -174,7 +174,7 @@ proc execQuery*(
     var retFuture = newFuture[void]("AsyncMysqlPool.execQuery")
     result = retFuture
     proc finishWrapCb(
-      err: ref Exception, 
+      err: ref Exception,
       replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
     ) {.async.} =
       await finishCb(err, replies)
@@ -186,7 +186,7 @@ proc execQuery*(
 
 proc execInitDb*(
   p: AsyncMysqlPool,
-  database: string, 
+  database: string,
   finishCb: proc (
     err: ref Exception,
     reply: ResultPacket
@@ -196,7 +196,7 @@ proc execInitDb*(
     var retFuture = newFuture[void]("AsyncMysqlPool.execInitDb")
     result = retFuture
     proc finishWrapCb(
-      err: ref Exception, 
+      err: ref Exception,
       reply: ResultPacket
     ) {.async.} =
       await finishCb(err, reply)
@@ -208,9 +208,9 @@ proc execInitDb*(
 
 proc execChangeUser*(
   p: AsyncMysqlPool,
-  user: string, 
-  password: string, 
-  database: string, 
+  user: string,
+  password: string,
+  database: string,
   charset = DefaultClientCharset,
   finishCb: proc (
     err: ref Exception,
@@ -221,7 +221,7 @@ proc execChangeUser*(
     var retFuture = newFuture[void]("AsyncMysqlPool.execChangeUser")
     result = retFuture
     proc finishWrapCb(
-      err: ref Exception, 
+      err: ref Exception,
       reply: ResultPacket
     ) {.async.} =
       await finishCb(err, reply)
@@ -230,11 +230,3 @@ proc execChangeUser*(
       complete(retFuture)
     execChangeUser(conn, user, password, database, charset, finishWrapCb)
   request(p, requestCb)
-
-
-
-
-
-
-
-    

@@ -4,9 +4,9 @@
 #    See the file "LICENSE", included in this distribution, for
 #    details about the copyright.
 
-import unittest, asyncmysql, util, mysqlparser, asyncdispatch, asyncnet, net
+import unittest, asyncmysql, util, mysqlparser, asyncdispatch, asyncnet, net, strutils
 
-const 
+const
   MysqlHost = "127.0.0.1"
   MysqlPort = Port(3306)
   MysqlUser = "mysql"
@@ -22,21 +22,21 @@ suite "AsyncMysqlConnection":
       proc recvPacketCb(packet: ResultPacket): Future[void] {.async.} =
         inc(qIx)
         case qIx
-        of 1: 
+        of 1:
           echo "  >>> strart transaction;"
           echo "  ", packet
           check packet.kind == rpkOk
-        of 2: 
+        of 2:
           echo "  >>> select host, user from user where user = ?;"
           echo "  ", packet
           write(stdout, "  ")
           check packet.kind == rpkResultSet
-        of 3: 
+        of 3:
           echo "  >>> select user from user;"
           echo "  ", packet
           write(stdout, "  ")
           check packet.kind == rpkResultSet
-        of 4: 
+        of 4:
           echo "  >>> commit;"
           echo "  ", packet
           check packet.kind == rpkOk
@@ -45,26 +45,26 @@ suite "AsyncMysqlConnection":
 
       proc recvPacketEndCb(): Future[void] {.async.} =
         case qIx
-        of 1: 
+        of 1:
           discard
-        of 2: 
+        of 2:
           write(stdout, "\n")
-        of 3: 
+        of 3:
           write(stdout, "\n")
-        of 4: 
+        of 4:
           discard
         else:
           discard
 
       proc recvFieldCb(field: string): Future[void] {.async.} =
         case qIx
-        of 1: 
+        of 1:
           discard
-        of 2: 
+        of 2:
           write(stdout, field, " ")
-        of 3: 
+        of 3:
           write(stdout, field, " ")
-        of 4: 
+        of 4:
           discard
         else:
           discard
@@ -85,7 +85,7 @@ commit;
       await execQuery(conn)
       close(conn)
 
-    waitFor1 main() 
+    waitFor1 main()
 
   test "streaming big query, 3 bytes of field buffer":
     proc execQuery(conn: AsyncMysqlConnection): Future[void] =
@@ -96,21 +96,21 @@ commit;
       proc recvPacketCb(packet: ResultPacket): Future[void] {.async.} =
         inc(qIx)
         case qIx
-        of 1: 
+        of 1:
           echo "  >>> strart transaction;"
           echo "  ", packet
           check packet.kind == rpkOk
-        of 2: 
+        of 2:
           echo "  >>> select host, user from user where user = ?;"
           echo "  ", packet
           write(stdout, "  ")
           check packet.kind == rpkResultSet
-        of 3: 
+        of 3:
           echo "  >>> select user from user;"
           echo "  ", packet
           write(stdout, "  ")
           check packet.kind == rpkResultSet
-        of 4: 
+        of 4:
           echo "  >>> commit;"
           echo "  ", packet
           check packet.kind == rpkOk
@@ -119,39 +119,39 @@ commit;
 
       proc recvPacketEndCb(): Future[void] {.async.} =
         case qIx
-        of 1: 
+        of 1:
           discard
-        of 2: 
+        of 2:
           write(stdout, "\n")
-        of 3: 
+        of 3:
           write(stdout, "\n")
-        of 4: 
+        of 4:
           discard
         else:
           discard
 
       proc recvFieldCb(buffer: string): Future[void] {.async.} =
         case qIx
-        of 1: 
+        of 1:
           discard
-        of 2: 
+        of 2:
           write(stdout, buffer)
-        of 3: 
+        of 3:
           write(stdout, buffer)
-        of 4: 
+        of 4:
           discard
         else:
           discard
 
       proc fieldEndCb(): Future[void] {.async.} =
         case qIx
-        of 1: 
+        of 1:
           discard
-        of 2: 
+        of 2:
           write(stdout, " ")
-        of 3: 
+        of 3:
           write(stdout, " ")
-        of 4: 
+        of 4:
           discard
         else:
           discard
@@ -172,7 +172,7 @@ commit;
       await execQuery(conn)
       close(conn)
 
-    waitFor1 main() 
+    waitFor1 main()
 
   test "atomic query, read all":
     proc execQuery(conn: AsyncMysqlConnection): Future[void] =
@@ -180,7 +180,7 @@ commit;
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         check replies.len == 4
@@ -189,17 +189,17 @@ commit;
         echo "  ", replies[0].packet
         check replies[0].packet.kind == rpkOk
         check replies[0].rows == nil
-       
+
         echo "  >>> select host, user from user where user = ?;"
         echo "  ", replies[1].packet
         echo "  ", replies[1].rows
         check replies[1].packet.kind == rpkResultSet
-      
+
         echo "  >>> select user from user;"
         echo "  ", replies[2].packet
         echo "  ", replies[2].rows
         check replies[2].packet.kind == rpkResultSet
-      
+
         echo "  >>> commit;"
         echo "  ", replies[3].packet
         check replies[3].packet.kind == rpkOk
@@ -219,7 +219,7 @@ commit;
       await execQuery(conn)
       close(conn)
 
-    waitFor1 main() 
+    waitFor1 main()
 
   test "commit and rollback":
     proc execCreateTable(conn: AsyncMysqlConnection): Future[void] =
@@ -227,7 +227,7 @@ commit;
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         check err == nil
@@ -241,12 +241,12 @@ commit;
   insert into sample(val) values (100);
   """), finishCb)
 
-    proc execRollback(conn: AsyncMysqlConnection): Future[void] = 
+    proc execRollback(conn: AsyncMysqlConnection): Future[void] =
       var retFuture = newFuture[void]("test.execRollback")
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         check err == nil
@@ -261,12 +261,12 @@ commit;
   rollback;
   """, "root"), finishCb)
 
-    proc execTransaction(conn: AsyncMysqlConnection): Future[void] = 
+    proc execTransaction(conn: AsyncMysqlConnection): Future[void] =
       var retFuture = newFuture[void]("test.execTransaction")
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         check err == nil
@@ -276,7 +276,7 @@ commit;
         echo "  ", replies[0].packet
         check replies[0].packet.kind == rpkOk
         check replies[0].rows == nil
-       
+
         echo "  >>> select val from sample where id = ?;"
         echo "  ", replies[1].packet
         check replies[1].packet.kind == rpkResultSet
@@ -309,7 +309,7 @@ commit;
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         check err == nil
@@ -317,7 +317,7 @@ commit;
         echo "  ", replies[0].packet
         check replies[0].packet.kind == rpkResultSet
         check replies[0].rows[0] == "100"
-        echo "  ", replies[0].rows  
+        echo "  ", replies[0].rows
         complete(retFuture)
 
       execQuery(conn, sql("""
@@ -331,7 +331,7 @@ commit;
       await execReselect(conn)
       close(conn)
 
-    waitFor1 main() 
+    waitFor1 main()
 
   test "when there are multiple requests at the same time, the requests are queued":
     proc execQuery(conn: AsyncMysqlConnection): Future[void] =
@@ -340,7 +340,7 @@ commit;
       var n = 2
 
       proc finish1Cb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         echo "  >>> select 100;"
@@ -352,7 +352,7 @@ commit;
           complete(retFuture)
 
       proc finish2Cb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         echo "  >>> select 200;"
@@ -371,14 +371,14 @@ commit;
       await execQuery(conn)
       close(conn)
 
-    waitFor1 main() 
+    waitFor1 main()
 
   test "ping":
     proc execPing(conn: AsyncMysqlConnection): Future[void] =
       var retFuture = newFuture[void]("text.execQuery")
       result = retFuture
 
-      proc finishCb(err: ref Exception, reply: ResultPacket): Future[void] {.async.} = 
+      proc finishCb(err: ref Exception, reply: ResultPacket): Future[void] {.async.} =
         echo "  >>> ping;"
         echo "  ", reply
         check err == nil
@@ -393,7 +393,7 @@ commit;
       await execPing(conn)
       close(conn)
 
-    waitFor1 sendComPing()  
+    waitFor1 sendComPing()
 
   test "use <database>":
     proc execUse(conn: AsyncMysqlConnection): Future[void] =
@@ -401,9 +401,9 @@ commit;
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
-      ): Future[void] {.async.} = 
+      ): Future[void] {.async.} =
         echo "  >>> use test;"
         echo "  ", replies[0].packet
         check err == nil
@@ -418,9 +418,9 @@ commit;
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
-      ): Future[void] {.async.} = 
+      ): Future[void] {.async.} =
         echo "  >>> use test;"
         echo "  ", replies[0].packet
         check err == nil
@@ -436,7 +436,7 @@ commit;
       await execSelect(conn)
       close(conn)
 
-    waitFor1 sendComPing()  
+    waitFor1 sendComPing()
 
     proc main() {.async.} =
       var conn = await openMysqlConnection(AF_INET, MysqlPort, MysqlHost, MysqlUser, MysqlPassword, "mysql")
@@ -444,7 +444,7 @@ commit;
       await execSelect(conn)
       close(conn)
 
-    waitFor1 main()  
+    waitFor1 main()
 
   test "show full fields from <table>":
     proc execQuery(conn: AsyncMysqlConnection): Future[void] =
@@ -452,7 +452,7 @@ commit;
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
       ): Future[void] {.async.} =
         echo "  ... ", replies[0].packet.fields[0], " ..."
@@ -467,7 +467,7 @@ commit;
       await execQuery(conn)
       close(conn)
 
-    waitFor1 main()   
+    waitFor1 main()
 
   test "change user":
     proc execChangeUser(conn: AsyncMysqlConnection): Future[void] =
@@ -475,7 +475,7 @@ commit;
       result = retFuture
 
       proc finishCb(
-        err: ref Exception, 
+        err: ref Exception,
         reply: ResultPacket
       ): Future[void] {.async.} =
         echo "  >>> change user;"
@@ -491,7 +491,7 @@ commit;
       await execChangeUser(conn)
       close(conn)
 
-    waitFor1 main()   
+    waitFor1 main()
 
   test "quit":
     proc execQuit(conn: AsyncMysqlConnection): Future[void] =
@@ -511,8 +511,47 @@ commit;
       await execQuit(conn)
       close(conn)
 
-    waitFor1 main()   
+    waitFor1 main()
 
+  test "inserting and selecting large results":
 
+    proc execCreateTable(conn: AsyncMysqlConnection): Future[void] =
+      var retFuture = newFuture[void]("test.execCreateTable")
+      result = retFuture
 
+      proc finishCb(
+        err: ref Exception,
+        replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
+      ): Future[void] {.async.} =
+        check err == nil
+        check replies.len == 4
+        complete(retFuture)
 
+      execQuery(conn, sql("""
+        use test;
+        drop table if exists sample;
+        create table sample(id int unsigned not null auto_increment primary key, val longtext not null);
+        insert into sample(val) values (?);
+        """, repeatChar(1000000, 'a')), finishCb)
+
+    proc execSelect(conn: AsyncMysqlConnection): Future[void] =
+      var retFuture = newFuture[void]("test.execCreateTable")
+      result = retFuture
+
+      proc finishCb(
+        err: ref Exception,
+        replies: seq[tuple[packet: ResultPacket, rows: seq[string]]]
+      ): Future[void] {.async.} =
+        check err == nil
+        check replies.len == 1
+        complete(retFuture)
+
+      execQuery(conn, sql("select * from sample"), finishCb)
+
+    proc main() {.async.} =
+      let conn = await openMysqlConnection(AF_INET, MysqlPort, MysqlHost, MysqlUser, MysqlPassword, "test")
+      await execCreateTable(conn)
+      await execSelect(conn)
+      close(conn)
+
+    waitFor1 main()
